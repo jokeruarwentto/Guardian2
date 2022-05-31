@@ -21,7 +21,7 @@ Guardian is here for you, a simple whitelist system to let you the choice of who
 
 ### Installation
 - Install [BepInExPack V Rising](https://v-rising.thunderstore.io/package/BepInEx/BepInExPack_V_Rising/) on your server
-- Extract ``arwent-Guardian2`` folder into _(VRising Server folder)/BepInEx/plugins_
+- Extract ``me.arwent.Guardian2`` folder into _(VRising Server folder)/BepInEx/plugins_
 
 ### Configuration
 - Open ``me.arwent.Guardian2.Configuration.xml`` with your favorite text editor
