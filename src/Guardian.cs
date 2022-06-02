@@ -1,11 +1,14 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BepInEx.IL2CPP.Utils.Collections;
 using Guardian2.Helpers;
 using HarmonyLib;
 using ProjectM;
 using ProjectM.Network;
+using RCONServerLib.Utils;
 using Steamworks;
 using Unity.Collections;
 using Unity.Entities;
@@ -158,7 +161,7 @@ public class Guardian : MonoBehaviour
 }
 
 [HarmonyPatch(typeof(SteamGameServer))]
-public class GuardianPatches
+public class SteamGameServer_Patches
 {
     [HarmonyPostfix]
     [HarmonyPatch("BeginAuthSession")]
@@ -168,5 +171,83 @@ public class GuardianPatches
 
         if (!Whitelist.Get().Contains(steamId.m_SteamID))
             __result = EBeginAuthSessionResult.k_EBeginAuthSessionResultInvalidTicket;
+    }
+}
+
+[HarmonyPatch(typeof(RconListenerSystem))]
+public class RconListenerSystem_Patches
+{
+    [HarmonyPostfix]
+    [HarmonyPatch("OnCreate")]
+    public static void OnCreate(RconListenerSystem __instance)
+    {
+        if (SettingsManager.ServerHostSettings.Rcon.Enabled)
+        {
+            // Thanks to molenzwiebel & Soliel for helping me here.
+            CommandHandler guardianCommandHandler =
+                new Func<string, Il2CppSystem.Collections.Generic.IList<string>, string>((command, args) =>
+                {
+                    if (args.Cast<Il2CppSystem.Collections.Generic.List<string>>().Count <= 0)
+                        return $"Invalid or no arguments was passed for [{command}] command.";
+
+                    if (args.Cast<Il2CppSystem.Collections.Generic.List<string>>().Count < 2)
+                        return $"There are missing arguments for [{command}] command.";
+
+                    switch (args[0])
+                    {
+                        case "add":
+                        case "a":
+                            return AddToWhitelist(args[1]);
+                        case "remove":
+                        case "r":
+                        case "delete":
+                        case "d":
+                            return RemoveFromWhitelist(args[1]);
+                        default:
+                            return $"[{args[0]}] is an unknown argument for [{command}].";
+                    }
+                });
+
+            __instance._Server.CommandManager.Add("guardian", "(add/remove) (steamId)",
+                "Add or remove an SteamID from the Guardian's whitelist.", guardianCommandHandler);
+        }
+    }
+
+    private static string AddToWhitelist(string steamId)
+    {
+        if (ulong.TryParse(steamId, out var result))
+        {
+            var whitelistFile =
+                File.ReadAllLines(Path.Combine(Plugin.PluginPath, Plugin.PluginWhitelistFileName)).ToList();
+
+            if (whitelistFile.ToList().Contains(result.ToString()))
+                return $"[{result}] is already in your whitelist.";
+
+            whitelistFile.Add(result.ToString());
+            File.WriteAllLines(Path.Combine(Plugin.PluginPath, Plugin.PluginWhitelistFileName), whitelistFile);
+
+            return $"[{result}] has been added into your whitelist.";
+        }
+
+        return $"[{steamId}] is not a valid SteamID.";
+    }
+
+    private static string RemoveFromWhitelist(string steamId)
+    {
+        if (ulong.TryParse(steamId, out var result))
+        {
+            var whitelistFile =
+                File.ReadAllLines(Path.Combine(Plugin.PluginPath, Plugin.PluginWhitelistFileName)).ToList();
+
+            if (!whitelistFile.ToList().Contains(result.ToString()))
+                return $"[{result}] is not in your whitelist.";
+
+            whitelistFile.Remove(result.ToString());
+            File.WriteAllLines(Path.Combine(Plugin.PluginPath, Plugin.PluginWhitelistFileName), whitelistFile);
+
+            return $"[{result}] has been removed into your whitelist.";
+        }
+
+        return $"[{steamId}] is not a valid SteamID.";
     }
 }
