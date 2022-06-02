@@ -14,11 +14,7 @@ public struct PluginConfigurationData
         set { }
     }
 
-    public bool Enabled
-    {
-        get => true;
-        set { }
-    }
+    public bool Enabled { get; set; } = true;
 
     [XmlAnyElement("HotReloadComment")]
     public XmlComment HotReloadComment
@@ -27,11 +23,7 @@ public struct PluginConfigurationData
         set { }
     }
 
-    public bool HotReload
-    {
-        get => true;
-        set { }
-    }
+    public bool HotReload { get; set; } = true;
 
     [XmlAnyElement("KickPlayerComment")]
     public XmlComment KickPlayerComment
@@ -41,11 +33,7 @@ public struct PluginConfigurationData
         set { }
     }
 
-    public bool KickPlayer
-    {
-        get => true;
-        set { }
-    }
+    public bool KickPlayer { get; set; } = true;
 }
 
 public static class PluginConfiguration
