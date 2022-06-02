@@ -34,6 +34,10 @@ public struct PluginConfigurationData
     }
 
     public bool KickPlayer { get; set; } = true;
+
+    public PluginConfigurationData()
+    {
+    }
 }
 
 public static class PluginConfiguration
