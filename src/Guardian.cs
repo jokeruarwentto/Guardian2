@@ -10,6 +10,7 @@ using ProjectM;
 using ProjectM.Network;
 using RCONServerLib.Utils;
 using Steamworks;
+using UnhollowerBaseLib;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -78,6 +79,8 @@ public class Guardian : MonoBehaviour
         if (PluginConfiguration.Get().HotReload) InitializeFileWatcher();
         else Plugin.Logger.LogWarning("HotReload is disabled.");
 
+        StartCoroutine(UpdateRemoteWhitelist().WrapToIl2Cpp());
+        
         while (true)
         {
             KickPlayers(OldWhitelisted);
@@ -101,6 +104,20 @@ public class Guardian : MonoBehaviour
         ServerBootstrap = ServerWorld.GetExistingSystem<ServerBootstrapSystem>();
     }
 
+    private IEnumerator UpdateRemoteWhitelist()
+    {
+        while (true)
+        {
+            var result = RemoteWhitelist.Update();
+            if (OldWhitelisted == null)
+                OldWhitelisted = result.oldWhitelist;
+            else if (result.oldWhitelist != null)
+                OldWhitelisted.AddRange(result.oldWhitelist);
+
+            yield return new WaitForSeconds(Math.Max(5, PluginConfiguration.Get().RemoteRefreshInterval));
+        }
+    }
+    
     /// <summary>
     ///     This is the system we need to hot reload our whitelist file.
     /// </summary>
@@ -140,7 +157,7 @@ public class Guardian : MonoBehaviour
         var entities = query.ToEntityArray(Allocator.Temp);
 
         foreach (var steamId in oldWhitelisted)
-            if (!Whitelist.Get().Contains(steamId))
+            if (!Whitelist.Get().Contains(steamId) && !RemoteWhitelist.Whitelisted.Contains(steamId))
                 foreach (var entity in entities)
                 {
                     var user = WorldEntityManager.GetComponentData<User>(entity);
@@ -164,12 +181,10 @@ public class Guardian : MonoBehaviour
 public class SteamGameServer_Patches
 {
     [HarmonyPostfix]
-    [HarmonyPatch("BeginAuthSession")]
-    public static void BeginAuthSession(object[] __args, ref object __result)
+    [HarmonyPatch(nameof(SteamGameServer.BeginAuthSession))]
+    public static void BeginAuthSession(ref EBeginAuthSessionResult __result, Il2CppStructArray<byte> pAuthTicket, int cbAuthTicket, CSteamID steamID)
     {
-        var steamId = (CSteamID) __args[2];
-
-        if (!Whitelist.Get().Contains(steamId.m_SteamID))
+        if (!Whitelist.Get().Contains(steamID.m_SteamID) && !RemoteWhitelist.Whitelisted.Contains(steamID.m_SteamID))
             __result = EBeginAuthSessionResult.k_EBeginAuthSessionResultInvalidTicket;
     }
 }
@@ -178,7 +193,7 @@ public class SteamGameServer_Patches
 public class RconListenerSystem_Patches
 {
     [HarmonyPostfix]
-    [HarmonyPatch("OnCreate")]
+    [HarmonyPatch(nameof(RconListenerSystem.OnCreate))]
     public static void OnCreate(RconListenerSystem __instance)
     {
         if (SettingsManager.ServerHostSettings.Rcon.Enabled)

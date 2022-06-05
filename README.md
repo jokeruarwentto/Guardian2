@@ -33,6 +33,20 @@ Guardian is here for you, a simple whitelist system to let you the choice of who
 - Add the player ``SteamID`` into it
 - Save
 
+### Usage of remote lists
+This allows for the mod to load remote whitelist files or data from apis.
+The data returned need to be newline separated `steamID64` ids.
+
+An example of a site that can be used is [whitelist.gorymoon.se](https://whitelist.gorymoon.se/) (twitch subscriber whitelist).
+
+Example on how to setup the config for this:
+```xml
+<RemoteWhitelist>
+    <string>https://example.com/link/to/file.txt</string>
+    <string>https://example.com/link/to/api/endpoint</string>
+</RemoteWhitelist>
+```
+
 ### Usage RCON
 - `guardian (add/remove) (steamId)`
 
