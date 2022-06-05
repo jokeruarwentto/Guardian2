@@ -35,6 +35,24 @@ public struct PluginConfigurationData
 
     public bool KickPlayer { get; set; } = true;
 
+    [XmlAnyElement("RemoteRefreshIntervalComment")]
+    public XmlComment RemoteRefreshIntervalComment
+    {
+        get => new XmlDocument().CreateComment("How often the whitelist should be refreshed in seconds, will default to 5 seconds if set lower then that.");
+        set { }
+    }
+    
+    public int RemoteRefreshInterval { get; set; } = 300;
+    
+    [XmlAnyElement("RemoteWhitelistComment")]
+    public XmlComment RemoteWhitelistComment
+    {
+        get => new XmlDocument().CreateComment("A list of links to remote whitelists containing STEAMID64 ids separated with a newline.");
+        set { }
+    }
+    
+    public string[] RemoteWhitelist { get; set; } = {""};
+    
     public PluginConfigurationData()
     {
     }
@@ -84,6 +102,11 @@ public static class PluginConfiguration
         using var reader = new FileStream(Path.Combine(Plugin.PluginPath, Plugin.PluginConfigurationFileName),
             FileMode.Open);
         Data = (PluginConfigurationData) serializer.Deserialize(reader);
+        reader.Close();
+        
+        // Write again for new configs
+        using var writer = new StreamWriter(Path.Combine(Plugin.PluginPath, Plugin.PluginConfigurationFileName));
+        serializer.Serialize(writer, Data);
     }
 
     /// <summary>
